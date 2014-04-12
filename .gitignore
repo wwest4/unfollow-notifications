@@ -1,0 +1,5 @@
+*.pyc
+*.swp
+credentials.py
+log.out
+venv
