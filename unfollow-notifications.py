@@ -25,11 +25,15 @@ import os
 import tweepy
 import logging
 import webbrowser
-import credentials
+import settings 
 
 from flask import Flask
 from logging.handlers import RotatingFileHandler
-from credentials import API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET
+from settings import API_KEY,             \
+                     API_SECRET,          \
+                     ACCESS_TOKEN,        \
+                     ACCESS_TOKEN_SECRET, \
+                     CALLBACK_URL
 
 LOG_FILE   = './log.out'
 
@@ -37,26 +41,30 @@ app = Flask(__name__)
 
 def setup_logger():
     if not app.debug:
-        file_handler = RotatingFileHandler(LOG_FILE,         \
-                                           mode='a',         \
-                                           maxBytes=1000000, \
-                                           backupCount=0,    \
-                                           encoding=None,    \
-                                           delay=0)
+        file_handler = RotatingFileHandler(LOG_FILE,              \
+                                           mode        = 'a',     \
+                                           maxBytes    = 1000000, \
+                                           backupCount = 0,       \
+                                           encoding    = None,    \
+                                           delay       = 0)
         file_handler.setLevel(logging.WARNING)
         app.logger.addHandler(file_handler)
 
-@app.route('/authenticate')
-def authenticate():
+@app.route('/auth_setup')
+def auth_setup():
     try:
-        auth = tweepy.OAuthHandler(API_KEY, API_SECRET)
-        auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
-        api = tweepy.API(auth)
-    except tweepy.TweepError:
-        return 'Error; failed to authenticate.'
-    return 'Authentication succeeded for user: ' + api.me().name
+        auth = tweepy.OAuthHandler(API_KEY, API_SECRET, CALLBACK_URL)
+        auth_url = auth.get_authorization_url(signin_with_twitter=True)
+        webbrowser.open(auth_url)
+    except:
+        return 'Error; problem with authentication setup.'
+    return 'Authentication setup succeeded.'
+
+# TODO
+#@app.route('/auth_finish')
+#def auth_finish():
 
 if __name__ == "__main__":
     setup_logger()
     app.config['PROPAGATE_EXCEPTIONS'] = True
-    app.run(debug=False) # turn debug off in production for security reasons
+    app.run(debug=True) # turn debug off in production for security reasons
