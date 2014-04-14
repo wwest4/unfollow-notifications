@@ -23,24 +23,25 @@
 import sys
 import os
 import tweepy
-import logging
-import webbrowser
 import settings 
 
-from flask import Flask
-from logging.handlers import RotatingFileHandler
+from flask import Flask, request, redirect
+
 from settings import API_KEY,             \
                      API_SECRET,          \
                      ACCESS_TOKEN,        \
                      ACCESS_TOKEN_SECRET, \
-                     CALLBACK_URL
+                     BASE_URL 
 
-LOG_FILE   = './log.out'
+LOG_FILE     = './log.out'
+CALLBACK_URL = BASE_URL + '/auth_finish'
 
 app = Flask(__name__)
 
 def setup_logger():
     if not app.debug:
+        import logging
+        from logging.handlers import RotatingFileHandler
         file_handler = RotatingFileHandler(LOG_FILE,              \
                                            mode        = 'a',     \
                                            maxBytes    = 1000000, \
@@ -54,17 +55,36 @@ def setup_logger():
 def auth_setup():
     try:
         auth = tweepy.OAuthHandler(API_KEY, API_SECRET, CALLBACK_URL)
-        auth_url = auth.get_authorization_url(signin_with_twitter=True)
-        webbrowser.open(auth_url)
+        auth_url = auth.get_authorization_url()
     except:
         return 'Error; problem with authentication setup.'
-    return 'Authentication setup succeeded.'
+    return redirect(auth_url)
 
-# TODO
-#@app.route('/auth_finish')
-#def auth_finish():
+@app.route('/auth_finish')
+def auth_finish():
+    try:
+        oauth_token    = request.args.get('oauth_token', '')
+        oauth_verifier = request.args.get('oauth_verifier', '')
+    except:
+        return 'Error: problem obtaining one or more request parameters.'
+
+    try:
+        auth = tweepy.OAuthHandler(API_KEY, API_SECRET, CALLBACK_URL)
+        auth.set_access_token(oauth_token, oauth_verifier)
+    except tweepy.TweepError:
+        print 'Error! Failed to set access token.'
+    api = tweepy.API(auth)
+    
+    return api.me().name + ' ' + auth.access_token.key + ' ' + auth.access_token.secret
 
 if __name__ == "__main__":
     setup_logger()
     app.config['PROPAGATE_EXCEPTIONS'] = True
     app.run(debug=True) # turn debug off in production for security reasons
+
+# TODO - auth not working properly
+# TODO - add log parameter knobs to settings.py
+# TODO - stub out parameters file if missing
+# TODO - add a setup route and a form to add/save settings
+# TODO - convert settings to db persistence, editable via a setup route
+
