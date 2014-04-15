@@ -25,13 +25,14 @@ import os
 import tweepy
 import settings 
 
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, session, url_for, escape
 
 from settings import API_KEY,             \
                      API_SECRET,          \
                      ACCESS_TOKEN,        \
                      ACCESS_TOKEN_SECRET, \
-                     BASE_URL 
+                     BASE_URL,            \
+                     SECRET_KEY
 
 LOG_FILE     = './log.out'
 CALLBACK_URL = BASE_URL + '/auth_finish'
@@ -51,11 +52,26 @@ def setup_logger():
         file_handler.setLevel(logging.WARNING)
         app.logger.addHandler(file_handler)
 
+@app.route('/')
+def index():
+    if 'username' in session:
+        return 'home page for ' + session['username']
+    else:
+        return redirect(url_for('auth_setup'))
+
+@app.route('/logout')
+def logout():
+    # remove the username from the session if it's there
+    session.pop('username', None)
+    return 'You have been logged out.'
+
 @app.route('/auth_setup')
 def auth_setup():
     try:
         auth = tweepy.OAuthHandler(API_KEY, API_SECRET, CALLBACK_URL)
-        auth_url = auth.get_authorization_url()
+        auth_url = auth.get_authorization_url(signin_with_twitter=True)
+        session['request_token'] = (auth.request_token.key,
+                                    auth.request_token.secret)
     except:
         return 'Error; problem with authentication setup.'
     return redirect(auth_url)
@@ -63,28 +79,31 @@ def auth_setup():
 @app.route('/auth_finish')
 def auth_finish():
     try:
-        oauth_token    = request.args.get('oauth_token', '')
         oauth_verifier = request.args.get('oauth_verifier', '')
     except:
         return 'Error: problem obtaining one or more request parameters.'
 
     try:
-        auth = tweepy.OAuthHandler(API_KEY, API_SECRET, CALLBACK_URL)
-        auth.set_access_token(oauth_token, oauth_verifier)
+        auth = tweepy.OAuthHandler(API_KEY, API_SECRET)
+        (token_key, token_secret) = session['request_token']
+        auth.set_request_token(token_key, token_secret)
+        auth.get_access_token(oauth_verifier)
     except tweepy.TweepError:
-        print 'Error! Failed to set access token.'
+        return 'Error! Failed to get access token.'
+
     api = tweepy.API(auth)
-    
-    return api.me().name + ' ' + auth.access_token.key + ' ' + auth.access_token.secret
+    session['username'] = api.me().screen_name
+    return redirect(url_for('index'))
 
 if __name__ == "__main__":
     setup_logger()
+    app.secret_key = SECRET_KEY
     app.config['PROPAGATE_EXCEPTIONS'] = True
     app.run(debug=True) # turn debug off in production for security reasons
 
-# TODO - auth not working properly
 # TODO - add log parameter knobs to settings.py
 # TODO - stub out parameters file if missing
 # TODO - add a setup route and a form to add/save settings
 # TODO - convert settings to db persistence, editable via a setup route
+# TODO - start writing tests
 
