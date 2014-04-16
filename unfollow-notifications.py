@@ -25,17 +25,24 @@ import os
 import tweepy
 import settings 
 
-from flask import Flask, request, redirect, session, url_for, escape
+from flask import (
+    Flask,
+    request,
+    redirect,
+    session,
+    url_for,
+    escape,
+)
 
-from settings import API_KEY,             \
-                     API_SECRET,          \
-                     ACCESS_TOKEN,        \
-                     ACCESS_TOKEN_SECRET, \
-                     BASE_URL,            \
-                     SECRET_KEY
-
-LOG_FILE     = './log.out'
-CALLBACK_URL = BASE_URL + '/auth_finish'
+from settings import (
+    API_KEY,
+    API_SECRET,
+    ACCESS_TOKEN,
+    ACCESS_TOKEN_SECRET,
+    LOG_FILE,
+    BASE_URL,
+    SECRET_KEY,
+)
 
 app = Flask(__name__)
 
@@ -43,12 +50,14 @@ def setup_logger():
     if not app.debug:
         import logging
         from logging.handlers import RotatingFileHandler
-        file_handler = RotatingFileHandler(LOG_FILE,              \
-                                           mode        = 'a',     \
-                                           maxBytes    = 1000000, \
-                                           backupCount = 0,       \
-                                           encoding    = None,    \
-                                           delay       = 0)
+        file_handler = RotatingFileHandler( 
+            LOG_FILE,
+            mode        = 'a',
+            maxBytes    = 1000000,
+            backupCount = 0,
+            encoding    = None,
+            delay       = 0
+        )
         file_handler.setLevel(logging.WARNING)
         app.logger.addHandler(file_handler)
 
@@ -68,7 +77,11 @@ def logout():
 @app.route('/auth_setup')
 def auth_setup():
     try:
-        auth = tweepy.OAuthHandler(API_KEY, API_SECRET, CALLBACK_URL)
+        auth = tweepy.OAuthHandler(
+            API_KEY, 
+            API_SECRET, 
+            BASE_URL + '/auth_finish'
+        )
         auth_url = auth.get_authorization_url(signin_with_twitter=True)
         session['request_token'] = (auth.request_token.key,
                                     auth.request_token.secret)
