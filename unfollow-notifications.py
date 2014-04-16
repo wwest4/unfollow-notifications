@@ -20,10 +20,11 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-import sys
 import os
-import tweepy
+import redis
 import settings 
+import sys
+import tweepy
 
 from flask import (
     Flask,
@@ -37,10 +38,9 @@ from flask import (
 from settings import (
     API_KEY,
     API_SECRET,
-    ACCESS_TOKEN,
-    ACCESS_TOKEN_SECRET,
-    LOG_FILE,
     BASE_URL,
+    LOG_FILE,
+    REDIS_URL,
     SECRET_KEY,
 )
 
@@ -106,7 +106,14 @@ def auth_finish():
 
     api = tweepy.API(auth)
     session['username'] = api.me().screen_name
+    save_access_token(auth, session['username'])
     return redirect(url_for('index'))
+
+def save_access_token(auth, username):
+    # TODO - catch exceptions & flash 
+    r = redis.from_url(REDIS_URL)
+    r.hset('access_token_keys', username, auth.access_token.key)
+    r.hset('access_token_secrets', username, auth.access_token.secret)
 
 if __name__ == "__main__":
     setup_logger()
@@ -119,4 +126,5 @@ if __name__ == "__main__":
 # TODO - add a setup route and a form to add/save settings
 # TODO - convert settings to db persistence, editable via a setup route
 # TODO - start writing tests
+# TODO - make sure authz revocation results in a re-authz and not a fatal error
 
