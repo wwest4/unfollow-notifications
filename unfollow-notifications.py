@@ -64,9 +64,28 @@ def setup_logger():
 @app.route('/')
 def index():
     if 'username' in session:
-        return 'home page for ' + session['username']
+        return home_page()
     else:
         return redirect(url_for('auth_setup'))
+
+def home_page():
+    auth = rebuild_auth()
+    api = tweepy.API(auth)
+    r =  '<table>'
+    r += '  <tr>'
+    r += '    <td>Username: </td><td>' + session['username'] + '</td>'
+    r += '  </tr>'
+    r += '  <tr>'
+    r += '    <td>Follower count: </td><td>' + str(len(api.followers_ids()))
+    r += '    </td>'
+    r += '  </tr>'
+    r += '</table>'
+    return r
+
+def rebuild_auth():
+    auth = tweepy.OAuthHandler(API_KEY, API_SECRET)
+    load_access_token(auth, session['username'])
+    return auth
 
 @app.route('/logout')
 def logout():
@@ -114,6 +133,13 @@ def save_access_token(auth, username):
     r = redis.from_url(REDIS_URL)
     r.hset('access_token_keys', username, auth.access_token.key)
     r.hset('access_token_secrets', username, auth.access_token.secret)
+
+def load_access_token(auth, username):
+    # TODO - catch exceptions & flash 
+    r = redis.from_url(REDIS_URL)
+    (key, secret) = (r.hget('access_token_keys', username),
+                     r.hget('access_token_secrets', username))
+    auth.set_access_token(key, secret)
 
 if __name__ == "__main__":
     setup_logger()
