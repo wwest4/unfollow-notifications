@@ -80,8 +80,35 @@ def home_page():
     r += '    </td>'
     r += '  </tr>'
     r += '</table>'
+    #r += diff_followers(api)
     return r
 
+def diff_followers(api):
+    # TODO - catch exceptions & flash, close connection?
+    r = redis.from_url(REDIS_URL)
+    key = str(api.me().id) + '_followers'
+    if r.exists(key):
+        old = cache_to_set(r, key)   # load old cache into a set
+        return []                    # no point in diffing w/ itself
+    reload_follower_cache(api, r, key)
+    new = cache_to_set(r, key)       # load new cache into a set
+    # TODO - old \ new (i.e. set-theoretic relative complement)
+    return [] #TODO - return actual results here
+
+def cache_to_set(r, key):
+    values = r.zrange(key, 0, -1)
+    return set(values)
+
+def reload_follower_cache(api, r, key):
+    # TODO - catch exceptions, close connections as appropriate
+    r.delete(key) # flush first
+    args = [key] 
+    followers = api.followers_ids()
+    for follower in followers:
+        args.append(follower)
+        args.append(str(follower))
+    r.zadd(*args)
+   
 def rebuild_auth():
     auth = tweepy.OAuthHandler(API_KEY, API_SECRET)
     load_access_token(auth, session['username'])
@@ -129,13 +156,13 @@ def auth_finish():
     return redirect(url_for('index'))
 
 def save_access_token(auth, username):
-    # TODO - catch exceptions & flash 
+    # TODO - catch exceptions & flash, close connection?
     r = redis.from_url(REDIS_URL)
     r.hset('access_token_keys', username, auth.access_token.key)
     r.hset('access_token_secrets', username, auth.access_token.secret)
-
+    
 def load_access_token(auth, username):
-    # TODO - catch exceptions & flash 
+    # TODO - catch exceptions & flash, close connection?
     r = redis.from_url(REDIS_URL)
     (key, secret) = (r.hget('access_token_keys', username),
                      r.hget('access_token_secrets', username))
@@ -147,6 +174,11 @@ if __name__ == "__main__":
     app.config['PROPAGATE_EXCEPTIONS'] = True
     app.run(debug=True) # turn debug off in production for security reasons
 
+# TODO - diff old and new cache to find unfollows
+#        o get the relative complement B \ A (elements in B not in A)
+#        o persist these as unfollow events for the user id
+# TODO - build a proper homepage with a layout, templates
+# TODO - reorganize code
 # TODO - stub out parameters file if missing
 # TODO - add a setup route and a form to add/save settings
 # TODO - convert settings to db persistence, editable via a setup route
