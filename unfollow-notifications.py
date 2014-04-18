@@ -40,6 +40,8 @@ from settings import (
     API_SECRET,
     BASE_URL,
     LOG_FILE,
+    LOG_MAX_BYTES,
+    LOG_ROTATIONS,
     REDIS_URL,
     SECRET_KEY,
 )
@@ -51,12 +53,10 @@ def setup_logger():
         import logging
         from logging.handlers import RotatingFileHandler
         file_handler = RotatingFileHandler( 
-            LOG_FILE,
-            mode        = 'a',
-            maxBytes    = 1000000,
-            backupCount = 0,
-            encoding    = None,
-            delay       = 0
+            filename    = LOG_FILE,
+            maxBytes    = LOG_MAX_BYTES,
+            backupCount = LOG_ROTATIONS, 
+            delay       = False
         )
         file_handler.setLevel(logging.WARNING)
         app.logger.addHandler(file_handler)
@@ -147,7 +147,6 @@ if __name__ == "__main__":
     app.config['PROPAGATE_EXCEPTIONS'] = True
     app.run(debug=True) # turn debug off in production for security reasons
 
-# TODO - add log parameter knobs to settings.py
 # TODO - stub out parameters file if missing
 # TODO - add a setup route and a form to add/save settings
 # TODO - convert settings to db persistence, editable via a setup route
