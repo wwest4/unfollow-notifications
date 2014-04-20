@@ -79,8 +79,9 @@ def home_page():
     r += '    <td>Follower count: </td><td>' + str(len(api.followers_ids()))
     r += '    </td>'
     r += '  </tr>'
+    r += '  <tr>'
+    r += '    <td>Recent unfollows: </td><td>' + str(len(diff_followers(api)))
     r += '</table>'
-    #r += diff_followers(api)
     return r
 
 def diff_followers(api):
@@ -92,8 +93,17 @@ def diff_followers(api):
         return []                    # no point in diffing w/ itself
     reload_follower_cache(api, r, key)
     new = cache_to_set(r, key)       # load new cache into a set
-    # TODO - old \ new (i.e. set-theoretic relative complement)
-    return [] #TODO - return actual results here
+    diff = old - new
+    if len(diff) > 0:
+        save_unfollow_events(diff)
+    return old - new
+
+def save_unfollow_events(r, diff):
+    for id in diff:
+        name = str(api.me().id + '_unfollows')
+        key = id
+        value = time.strftime("%Y-%m-%d %H:%M:%S")
+        r.hset(name, key, value)
 
 def cache_to_set(r, key):
     values = r.zrange(key, 0, -1)
