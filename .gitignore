@@ -3,4 +3,5 @@
 log.out
 settings.py
 venv
+activate
 .idea
