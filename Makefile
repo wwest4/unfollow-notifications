@@ -1,4 +1,4 @@
-PACKAGE := /tmp/unfollow-notifications.zip
+PACKAGE := ~/artifacts/unfollow-notifications.zip
 VENV_DIR := ~/.virtualenvs/unfollow-notifications
 SITE_PKG_DIR := $(VENV_DIR)/lib/python2.7/site-packages
 SRC_FILES := find . -type f -name "*.py"
